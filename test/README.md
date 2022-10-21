@@ -14,4 +14,5 @@ Please ensure that you do not have `spi-tools` package installed.
 ```
 
 The `channel number` is within the range of 0-15. Add `--loop` option to get the read of the channel repeatedly.
+
 `--rotate` option is to scan-read all 16 channels. Add `--loop` option to get the rotated results repeatedly.

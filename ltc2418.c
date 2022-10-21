@@ -175,7 +175,7 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 	}
 	
 	uvalue_out = (int32_t)((result >> 6) & 8388607); // 0b11111111111111111111111 -> 23-bit
-	*output = sign * uvalue_out;
+	*output = sign * uvalue_out - config->calibration[channel];
 	
 	return 0;
 }
