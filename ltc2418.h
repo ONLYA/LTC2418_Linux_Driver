@@ -44,5 +44,5 @@ typedef struct LTC2418_config
 } LTC2418_config_t;
 
 int LTC2418_init(LTC2418_config_t *config, const char* device, bool internal, bool differential);
-int LTC2418_calibrate(LTC2418_config_t *config, int loop);
+int LTC2418_calibrate(LTC2418_config_t *config, int32_t loop);
 int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, int attempts);

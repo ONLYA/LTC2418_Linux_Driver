@@ -71,20 +71,30 @@ int LTC2418_init(LTC2418_config_t *config, const char* device, bool internal, bo
  *
  * `loop` determins how many times a single channel is read and averaged.
  **/
-int LTC2418_calibrate(LTC2418_config_t *config, int loop)
+int LTC2418_calibrate(LTC2418_config_t *config, int32_t loop)
 {
 	int i, j;
-	int reading[loop], total = 0;
+	int reading, total = 0;
 	for (i = 0; i < 16; i++)
 	{
+		total = 0;
 		for (j = 0; j < loop; j++)
 		{
-			LTC2418_readSingle(config, i, reading + j, 3);
+			LTC2418_readSingle(config, i, &reading, 3);
 			sleep_ms(config->conversion_time * 2);
-			total += reading[j];
+			total += reading;
 		}
 		config->calibration[i] = total / loop;
 	}
+	
+	#ifdef _SPI_VERBOSE_
+	printf("\nCalibration done! Calibration data as following:\n");
+	for (i = 0;i < 16; i++)
+	{
+		printf("Calibration %d: %d\n", i, config->calibration[i]);
+	}
+	printf("\n");
+	#endif
 }
 
 /**
@@ -154,9 +164,6 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 	SPI_transfer(config->spi, tx_buf, rx_buf);
 	
 	result = ((uint32_t)rx_buf[0] << 24) | ((uint32_t)rx_buf[1] << 16) | ((uint32_t)rx_buf[2] << 8) | ((uint32_t)rx_buf[3] << 0);
-	#ifdef _SPI_VERBOSE_
-	printf("result: %x\n", result);
-	#endif
 	
 	if (check_parity(result) == 1)
 	{
@@ -185,9 +192,13 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 			return LTC2418_readSingle(config, channel, output, attempts - 1);
 		}
 	}
-	
 	uvalue_out = (int32_t)((result >> 6) & 8388607); // 0b11111111111111111111111 -> 23-bit
 	*output = sign * uvalue_out - config->calibration[channel];
+	
+	#ifdef _SPI_VERBOSE_
+	printf("raw: %x\n", result);
+	printf("output: %d\n", *output);
+	#endif
 	
 	return 0;
 }

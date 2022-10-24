@@ -22,8 +22,8 @@
 // Replace the sleep function as you like (sleep_ms(int ms))
 #include "sleep.h"
 
-#define _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ 0
-#define _MAIN_TEST_SINGLE_CHANNEL_ 0
+#define _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ 1
+#define _MAIN_TEST_SINGLE_CHANNEL_ 2
 #if _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 1 && _MAIN_TEST_SINGLE_CHANNEL_ > 15
 #error The channel number should be from 0 to 15!
 #endif
@@ -38,7 +38,11 @@ int main( void )
 	int32_t *output = malloc(sizeof(int32_t));
 	uint16_t sleep_time;
 	LTC2418_init(configuration, DEVICE_NAME, true, false);
-	//LTC2418_calibrate(configuration, 2);	// Calibrate the ADC at startup. The calibration data will be applied in the later conversions.
+	
+	printf("Calibration in process...\n");
+	LTC2418_calibrate(configuration, 3);	// Calibrate the ADC at startup with average of 2. The calibration data will be applied in the later conversions.
+	printf("Calibration finished!\n");
+	
 	sleep_time = configuration->conversion_time * 2; // Make sure it gets enough sleep time for accurate result
 	
 	#if _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 1
