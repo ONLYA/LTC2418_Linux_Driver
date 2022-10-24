@@ -48,7 +48,7 @@ int main( void )
 	#if _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 1
 	LTC241X_readSingle(configuration, _MAIN_TEST_SINGLE_CHANNEL_, output, 3);
 	printf("Channel %d: %d\n", _MAIN_TEST_SINGLE_CHANNEL_, output[0]);
-	sleep_ms(sleep_time);
+	sleep_ms(sleep_time);	// Necessary sleep time for proper ADC conversion.
 	#elif _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 0
 	while (1)
 	{
@@ -60,7 +60,7 @@ int main( void )
 		{
 			LTC241X_readSingle(configuration, i, output, 3);
 			printf("Channel %d: %d\n", i, output[0]);
-			sleep_ms(sleep_time);
+			sleep_ms(sleep_time);	// Necessary sleep time for proper ADC conversion.
 		}
 	}
 	#endif
