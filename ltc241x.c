@@ -1,10 +1,12 @@
 /**
- * ltc2418.c
+ * ltc241x.c
  * 2022 October 21
  *
  * Description:
  *  This is the SPI API source file. The default SPI config is defined here. 
- *  This only contains necessary functions for LTC2418 ADC communications.
+ *  This only contains necessary functions for LTC2414/LTC2418 ADC communications.
+ *  Noted that when the chip is LTC2414. Just read the first 8 channels.
+ *   Another 8 channels will return a garbage value.
  *
  * Copyright 2022 Xiaosheng An
  *
@@ -20,7 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ltc2418.h"
+#include "ltc241x.h"
 #include "spi.h"
 
 // Replace the sleep function as you like (sleep_ms(int ms))
@@ -35,23 +37,23 @@ uint8_t fromBinary(const char *s) {
 }
 
 /**
- * Init the SPI bus for LTC2418 ADC IC.
+ * Init the SPI bus for LTC241X ADC IC.
  *
- * `config` is the empty LTC2418_config_t variable that would be set by the two 
+ * `config` is the empty LTC241X_config_t variable that would be set by the two 
  * `internal` determines whether the internal oscillator is used or not. If not, pull-down the SCK line.
  * `differential` determines whether the channel input is differential.
  **/
-int LTC2418_init(LTC2418_config_t *config, const char* device, bool internal, bool differential)
+int LTC241X_init(LTC241X_config_t *config, const char* device, bool internal, bool differential)
 {
 	config->internal_osc = internal;
 	if (internal)
 	{
-		config->frequency = INTERNAL_LTC2418_SCK_FREQ;
+		config->frequency = INTERNAL_LTC241X_SCK_FREQ;
 		config->conversion_time = INTERNAL_MAX_CONVERSION_TIME_MS;
 	}
 	else
 	{
-		config->frequency = CALC_LTC2418_SCK_FREQ(EXT_OSC_FREQ);
+		config->frequency = CALC_LTC241X_SCK_FREQ(EXT_OSC_FREQ);
 		config->conversion_time = CALC_MAX_CONVERSION_TIME_MS(EXT_OSC_FREQ);
 	}
 	config->differential = differential;
@@ -71,16 +73,20 @@ int LTC2418_init(LTC2418_config_t *config, const char* device, bool internal, bo
  *
  * `loop` determins how many times a single channel is read and averaged.
  **/
-int LTC2418_calibrate(LTC2418_config_t *config, int32_t loop)
+int LTC241X_calibrate(LTC241X_config_t *config, int32_t loop)
 {
 	int i, j;
 	int reading, total = 0;
+	#if LTC241x == LTC2414
+	for (i = 0; i < 8; i++)
+	#elif LTC241x == LTC2418
 	for (i = 0; i < 16; i++)
+	#endif
 	{
 		total = 0;
 		for (j = 0; j < loop; j++)
 		{
-			LTC2418_readSingle(config, i, &reading, 3);
+			LTC241X_readSingle(config, i, &reading, 3);
 			sleep_ms(config->conversion_time * 2);
 			total += reading;
 		}
@@ -89,7 +95,11 @@ int LTC2418_calibrate(LTC2418_config_t *config, int32_t loop)
 	
 	#ifdef _SPI_VERBOSE_
 	printf("\nCalibration done! Calibration data as following:\n");
-	for (i = 0;i < 16; i++)
+	#if LTC241x == LTC2414
+	for (i = 0; i < 8; i++)
+	#elif LTC241x == LTC2418
+	for (i = 0; i < 16; i++)
+	#endif
 	{
 		printf("Calibration %d: %d\n", i, config->calibration[i]);
 	}
@@ -101,7 +111,7 @@ int LTC2418_calibrate(LTC2418_config_t *config, int32_t loop)
  * This is to decode the input to the LTC2418 according to the requested channel and pre-defined configs
  *
  **/
-uint8_t LTC2418_encodeDataIn(const LTC2418_config_t *config, int channel)
+uint8_t LTC241X_encodeDataIn(const LTC241X_config_t *config, int channel)
 {
 	char *data;
 	uint8_t ret;
@@ -145,9 +155,9 @@ unsigned int check_parity(unsigned int v)
  * Return -1 if Even parity is not met.
  * Return 0 if OK.
  **/
-int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, int attempts)
+int LTC241X_readSingle(LTC241X_config_t *config, int channel, int32_t *output, int attempts)
 {
-	uint8_t *tx_buf;// {LTC2418_encodeDataIn(config, channel), 0, 0, 0};
+	uint8_t *tx_buf;// {LTC241X_encodeDataIn(config, channel), 0, 0, 0};
 	uint8_t *rx_buf;
 	uint32_t result;
 	int32_t sign = -1, uvalue_out;
@@ -156,7 +166,7 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 	tx_buf = malloc(4 * sizeof(uint8_t));
 	rx_buf = malloc(4 * sizeof(uint8_t));
 	
-	memset(tx_buf, LTC2418_encodeDataIn(config, channel), sizeof(uint8_t));
+	memset(tx_buf, LTC241X_encodeDataIn(config, channel), sizeof(uint8_t));
 	memset(tx_buf + 1, 0, 3 * sizeof(uint8_t));
 	
 	memset(rx_buf, 0, 4 * sizeof(uint8_t));
@@ -173,7 +183,7 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 		if (attempts < 0) {return -1;}
 		else {
 			sleep_ms(config->conversion_time * 2);
-			return LTC2418_readSingle(config, channel, output, attempts - 1);
+			return LTC241X_readSingle(config, channel, output, attempts - 1);
 		}
 	}
 	
@@ -189,7 +199,7 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 		else
 		{
 			sleep_ms(config->conversion_time * 2);
-			return LTC2418_readSingle(config, channel, output, attempts - 1);
+			return LTC241X_readSingle(config, channel, output, attempts - 1);
 		}
 	}
 	uvalue_out = (int32_t)((result >> 6) & 8388607); // 0b11111111111111111111111 -> 23-bit

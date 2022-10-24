@@ -1,7 +1,7 @@
-# LTC2418 Linux driver
+# LTC241X Linux driver
 
 ## Introduction
-This contains the generic SPI driver and the LTC2418 SPI ADC chip using the SPI API. `main.c` is the test program to implement the ADC read to-the-go.
+This contains the generic SPI driver and the LTC2414/LTC2418 SPI ADC chip using the SPI API. `main.c` is the test program to implement the ADC read to-the-go.
 
 ## SPI driver
 
@@ -15,8 +15,14 @@ To manipulate the SPIdev device `/dev/spidev1.0`, the system IOCTL API is used. 
 
 The API contains the init function with a config struct, read, write and sync functions with continuous packet number parameter.
 
-## LTC2418 API
+## LTC241X API
 This uses the `spi.h` API provided as the SPIdev backend.
+
+In order to change the ADC chip between LTC2414 and LTC2418, change the line in `ltc241x.h` as either of the following:
+```
+#define LTC241x LTC2414 // For LTC2414
+#define LTC241x LTC2418 // For LTC2418
+```
 
 There are init, offset calibration and read functions defined.
 
@@ -25,7 +31,9 @@ Please noted that there is maximum 166ms conversion time with the internal oscil
 ## Test program `main.c`
 
 ### Build
-To build the program, run `make`. Clean the solution with `make clean`.
+To build the program, run `make`. Clean the solution with `make clean`. 
+
+(Optional, `make debug` to build the debug version for gdb. `make verbose` to build the debug version with more detailed prints to stdout.)
 
 To run the program, run `./main`.
 
