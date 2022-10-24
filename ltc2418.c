@@ -14,19 +14,20 @@
  *
  **/
 
-#include <stdbool.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ltc2418.h"
 #include "spi.h"
 
-// Replace the sleep function as you like
+// Replace the sleep function as you like (sleep_ms(int ms))
 #include "sleep.h"
 
 static const char *addresses[16] = {
-	'10000', '11000', '10001', '11001', '10010', '11010', '10011', '11011', '10100', '11100', '10101', '11101', '10110', '11110', '10111', '11111'
+	"10000", "11000", "10001", "11001", "10010", "11010", "10011", "11011", "10100", "11100", "10101", "11101", "10110", "11110", "10111", "11111"
 };
 
 uint8_t fromBinary(const char *s) {
@@ -54,10 +55,11 @@ int LTC2418_init(LTC2418_config_t *config, const char* device, bool internal, bo
 		config->conversion_time = CALC_MAX_CONVERSION_TIME_MS(EXT_OSC_FREQ);
 	}
 	config->differential = differential;
-	config->calibration = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	memset(config->calibration, 0, sizeof(config->calibration));
 	
-	config->*spi = SPI_get_default_config();
-	config->spi->device = device;
+	*(config->spi) = SPI_get_default_config();
+	strcpy(config->spi->device, device);
+	config->spi->lsb = false;
 	config->spi->block_size = 4;
 	config->spi->frequency = config->frequency;
 	
@@ -73,11 +75,11 @@ int LTC2418_calibrate(LTC2418_config_t *config, int loop)
 {
 	int i, j;
 	int reading[loop], total = 0;
-	for (i = 0; i++; i < 16)
+	for (i = 0; i < 16; i++)
 	{
-		for (j = 0; j++; j < loop)
+		for (j = 0; j < loop; j++)
 		{
-			LTC2418_readSingle(config, i, reading + j);
+			LTC2418_readSingle(config, i, reading + j, 3);
 			sleep_ms(config->conversion_time * 2);
 			total += reading[j];
 		}
@@ -96,11 +98,11 @@ uint8_t LTC2418_encodeDataIn(const LTC2418_config_t *config, int channel)
 	data = malloc(8 * sizeof(char));
 	strcpy(data, "101");
 	
-	if (!config->differential)
+	if (!config->differential)	// Single-ended
 	{
 		strcat(data, addresses[channel]);
 	}
-	else
+	else						// Differential
 	{
 		// TODO: to be implemented...
 	}
@@ -112,6 +114,7 @@ uint8_t LTC2418_encodeDataIn(const LTC2418_config_t *config, int channel)
 
 /**
  * Check 32-bit parity
+ *  Credit: https://graphics.stanford.edu/~seander/bithacks.html##ParityMultiply
  *
  * Return 0 if even number of 1.
  * Return 1 if odd number of 1.
@@ -146,14 +149,20 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 	memset(tx_buf, LTC2418_encodeDataIn(config, channel), sizeof(uint8_t));
 	memset(tx_buf + 1, 0, 3 * sizeof(uint8_t));
 	
-	memset(rc_buf, 0, 4 * sizeof(uint8_t));
+	memset(rx_buf, 0, 4 * sizeof(uint8_t));
 	
 	SPI_transfer(config->spi, tx_buf, rx_buf);
 	
-	result = ((uint32_t)rx_buf[3] << 24) | ((uint32_t)rx_buf[2] << 16) | ((uint32_t)rx_buf[1] << 8) | ((uint32_t)rx_buf[0] << 0);
+	result = ((uint32_t)rx_buf[0] << 24) | ((uint32_t)rx_buf[1] << 16) | ((uint32_t)rx_buf[2] << 8) | ((uint32_t)rx_buf[3] << 0);
+	#ifdef _SPI_VERBOSE_
+	printf("result: %x\n", result);
+	#endif
 	
 	if (check_parity(result) == 1)
 	{
+		#ifdef _SPI_VERBOSE_
+		printf("Pariity attempt %d\n", attempts);
+		#endif
 		if (attempts < 0) {return -1;}
 		else {
 			sleep_ms(config->conversion_time * 2);
@@ -166,6 +175,9 @@ int LTC2418_readSingle(LTC2418_config_t *config, int channel, int32_t *output, i
 	address = (uint8_t)((result >> 1) & 31); // 0b11111
 	if (address != fromBinary(addresses[channel]))
 	{
+		#ifdef _SPI_VERBOSE_
+		printf("Address attempt %d\n", attempts);
+		#endif
 		if (attempts < 0) {return -2;}
 		else
 		{

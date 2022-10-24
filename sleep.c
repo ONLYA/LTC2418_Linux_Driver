@@ -9,16 +9,19 @@
 
 #ifdef WIN32
 #include <windows.h>
+#define _SLEEP_ENVIRONMENT_ 0
 #elif _POSIX_C_SOURCE >= 199309L
 #include <time.h>   // for nanosleep
+#define _SLEEP_ENVIRONMENT_ 1
 #else
 #include <unistd.h> // for usleep
+#define _SLEEP_ENVIRONMENT_ 2
 #endif
 
 void sleep_ms(int milliseconds){ // cross-platform sleep function
-#ifdef WIN32
+#if _SLEEP_ENVIRONMENT_ == 0
     Sleep(milliseconds);
-#elif _POSIX_C_SOURCE >= 199309L
+#elif _SLEEP_ENVIRONMENT_ == 1
     struct timespec ts;
     ts.tv_sec = milliseconds / 1000;
     ts.tv_nsec = (milliseconds % 1000) * 1000000;

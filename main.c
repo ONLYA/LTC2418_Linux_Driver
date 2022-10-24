@@ -15,29 +15,49 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "ltc2418.h"
 
-// Replace the sleep function as you like
+// Replace the sleep function as you like (sleep_ms(int ms))
 #include "sleep.h"
+
+#define _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ 0
+#define _MAIN_TEST_SINGLE_CHANNEL_ 0
+#if _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 1 && _MAIN_TEST_SINGLE_CHANNEL_ > 15
+#error The channel number should be from 0 to 15!
+#endif
+
+
+const static char DEVICE_NAME[] =  "/dev/spidev1.0";
 
 int main( void )
 {
-	LTC2418_config_t *configuration;
+	LTC2418_config_t *configuration = malloc(sizeof(LTC2418_config_t));
 	int i;
-	int32_t *output;
+	int32_t *output = malloc(sizeof(int32_t));
 	uint16_t sleep_time;
-	LTC2418_init(configuration, true, false);
-	LTC2418_calibrate(configuration, 2);
+	LTC2418_init(configuration, DEVICE_NAME, true, false);
+	//LTC2418_calibrate(configuration, 2);	// Calibrate the ADC at startup. The calibration data will be applied in the later conversions.
 	sleep_time = configuration->conversion_time * 2; // Make sure it gets enough sleep time for accurate result
+	
+	#if _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 1
+	LTC2418_readSingle(configuration, _MAIN_TEST_SINGLE_CHANNEL_, output, 3);
+	printf("Channel %d: %d\n", _MAIN_TEST_SINGLE_CHANNEL_, output[0]);
+	sleep_ms(sleep_time);
+	#elif _MAIN_TEST_SINGLE_CHANNEL_ENABLE_ == 0
 	while (1)
 	{
-		for (i = 0; i++; i < 16)
+		for (i = 0; i < 16; i++)
 		{
-			LTC2418_readSingle(configuration, i, output);
-			printf("Channel %d: %d\n", i, *output);
+			LTC2418_readSingle(configuration, i, output, 3);
+			printf("Channel %d: %d\n", i, output[0]);
 			sleep_ms(sleep_time);
 		}
 	}
+	#endif
+	
+	free(output);
+	free(configuration);
 	return 0;
 }

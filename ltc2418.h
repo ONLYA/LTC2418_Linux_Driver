@@ -13,6 +13,7 @@
  *
  **/
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #include "spi.h"
@@ -39,7 +40,7 @@ typedef struct LTC2418_config
 	bool		differential;	// Whether this is the differential channel reading. If false, then individual ADC channel (single-ended) will be read.
 	uint16_t	conversion_time;// The maximum conversion time for a single read
 	int32_t		calibration[16];// The calibration data for all 16 channels
-	spi_config_t *spi;			// The configuration of SPIdev
+	spi_config_t spi[1];			// The configuration of SPIdev
 } LTC2418_config_t;
 
 int LTC2418_init(LTC2418_config_t *config, const char* device, bool internal, bool differential);

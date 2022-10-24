@@ -17,11 +17,12 @@
 #ifndef _SPI_H_
 #define _SPI_H_
 
+#include <stdint.h>
 #include <stdbool.h>
 
 typedef struct spi_config
 {
-	char*		device;			// SPIdev name. e.g. "/dev/spidev1.0"
+	char		device[20];		// SPIdev name. e.g. "/dev/spidev1.0"
 	int			fd;				// Opened device file descriptor
 	uint8_t		mode;			// {CPOL, CPHA}
 	bool		lsb;			// Whether LSB data first or not1
